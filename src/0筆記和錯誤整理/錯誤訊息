@@ -1,0 +1,210 @@
+以下是從專案開發初期至目前為止，所遇到的主要錯誤與完整解決方法整理。此筆記可用作回顧與專案成長歷程的記錄。
+
+## ✅ 1. 泡泡大小無法根據 priority 改變
+
+**錯誤描述：** Bubble 大小無反應，樣式不生效。
+
+**原因：** `Bubble.js` 最後 return 區塊下方多了一個 `<Bubble />`，造成無意義的多餘渲染。
+
+**解法：** 刪除多餘的 `<Bubble />`，並確認 `priority` 有正確傳入與被映射成大小。
+
+---
+
+## ✅ 2. 新增夢想按鈕有時消失
+
+**錯誤描述：** 有時畫面上沒有「新增夢想」按鈕。
+
+**原因：** `Button` 被包在 `dreams.length === 0` 條件式內，導致有夢想時按鈕不出現。
+
+**解法：** 把 `<Button>` 移出條件式，改成 always render。
+
+---
+
+## ✅ 3. 折線圖資料不正確
+
+**錯誤描述：**
+
+折線圖中的完成日期錯誤或為 `undefined`，導致圖表出現「未知」分類，無法正確顯示每日完成數量。
+
+**原因：**
+
+一開始資料中有些使用 `finishedAt`，有些使用 `completeDate`；後來即使欄位名稱統一了，X 軸分類仍然顯示為「未知」，是因為時間格式包含時分秒，圖表無法正確歸類。
+
+**解法：**
+
+1. 統一欄位命名為 `completeDate`
+2. 使用 `dayjs(completeDate).format('YYYY-MM-DD')` 格式化為純日期
+3. 
+
+---
+
+## ✅ 4. priority 沒有寫入 JSON 結構中
+
+**錯誤描述：** 表單新增了 priority，但寫入時丟失。
+
+**原因：** `addDream()` 中沒有傳入 `priority` 欄位。
+
+**解法：**
+
+- 表單 `<Form.Item name="priority">` 加入
+- `onFinish()` 內將 `priority` 一併帶入函式
+
+---
+
+## ✅ 5. AddDreamPage 中報錯 title is not defined
+
+**錯誤描述：** `title is not defined`
+
+**原因：** 你把 `addDream(...)` 寫在函式外層，未綁在事件中。
+
+**解法：** 移除外層 `addDream(...)`，並僅在 `onFinish` 中執行。
+
+---
+
+## ✅ 6. CNN 網站爬蟲資料為空
+
+**錯誤描述：** 爬蟲爬完儲存的 JSON 是空陣列 `[]`
+
+**原因：** CNN 首頁 DOM 結構總是變動，`select("h3 a")` 抓不到資料。
+
+**解法：**
+
+- 改用手動指定連結（你提供的睡覺/健康/食品 12 筆）
+- 使用 `BeautifulSoup` 進入每篇文章抓取內容
+
+---
+
+## ✅ 7. JSON 中文與英文混雜但無法切換
+
+**錯誤描述：** 頁面只有英文或中文，無法動態切換顯示
+
+**解法：**
+
+- 用 `useState("zh")` 控制內文顯示哪個欄位 ✅
+- 為介面文字使用 `i18n + t()` ✅
+- 文章內容顯示則用 `lang === 'zh' ? item.translated : item.content` 控制 ✅
+
+---
+
+## ✅ 8. Tab 名稱無法跟著語言切換
+
+**錯誤描述：** 切語言後 Tab 仍顯示中文（睡覺、健康、食品）
+
+**原因：** label 寫死在陣列中，不會因語言改變而重新渲染
+
+**解法：**
+
+- 使用 `t(cat.key)` 配合 i18n 翻譯表
+- 將 `<Tabs key={i18n.language}>` 強制讓 Tabs 重繪 label ✅
+
+---
+
+## ✅ 9. 語言選單切換無作用（Radio group）
+
+**錯誤描述：** 切換按鈕選「英文」但畫面沒反應
+
+**原因：** 沒有呼叫 `i18n.changeLanguage()`
+
+**解法：**
+
+```jsx
+onChange={e => {
+  const newLang = e.target.value;
+  setLang(newLang);
+  i18n.changeLanguage(newLang); // ✅ 通知 i18n 切換語系
+}}
+
+```
+
+---
+
+## ✅ 10. `t("sleep")` console.log() 永遠顯示中文
+
+**錯誤描述：** 切換語言後 `t("sleep")` 還是顯示 "睡覺"
+
+**原因：** 仍未正確呼叫 `i18n.changeLanguage()`，或未載入 `en.json`
+
+**解法：**
+
+- 加入 `i18n.changeLanguage(lang)`
+- 確保 `en.json` 有對應 key-value，如 "sleep": "Sleep"
+
+---
+
+## ✅ 11. i18n 初始化後 label 還是沒變
+
+**錯誤描述：** 文章類別名稱仍然沒反應
+
+**解法補充：**
+
+- 加入 `<Tabs key={i18n.language}>`，讓語言變動時強制重繪
+
+---
+
+## ✅ 12. 前端寫入成功但泡泡不出現
+
+**錯誤描述：** 寫入後有成功提示與跳轉，但泡泡未更新。
+
+**原因：** 儲存成功後前端沒刷新資料、跳轉前未等待 API 完成。
+
+**解法：**
+
+- 確認 `navigate()` 前有寫入成功狀態確認
+- 修正回傳格式為 `{ status: "success" }` 而非 `{ success: true }` 混用問題
+- SomedayList 加入 `useEffect` 內 fetch 取得最新資料並設進 state ✅
+
+---
+
+## ✅ 13. 夢想詳情頁只有標題沒內文
+
+**錯誤描述：** 點泡泡跳轉後，只看到標題，其他內容不顯示
+
+**原因：** getDreams.php 原本用在取所有資料，但頁面用來取單一資料，造成資料結構不對
+
+**解法：**
+
+- 拆分為 `getDreamById.php`
+- 修正 fetch(`.../getDreamById.php?id=...`) 並設計 `{ id, title, inspiration, motivation }` 格式正確
+
+---
+
+## ✅ 14. 點泡泡後 URL 正確但資料為 null
+
+**錯誤描述：** 頁面顯示「夢想不存在或已被刪除」
+
+**原因：** URL 正確，但 `id` 是字串，資料庫比對 int 失敗
+
+**解法：** `bind_param("i", $id)` 並確認資料庫欄位為 INT，`id` 轉成整數送出 ✅
+
+---
+
+## ✅ 15. 成就頁沒顯示任何完成夢想
+
+**錯誤描述：** 完成後跳轉到 `/garden`，卻沒任何泡泡種子顯示
+
+**原因：** GardenPage 中 `completedDreams` 仍從 context 撈資料，未連線資料庫
+
+**解法：**
+
+- 改為 `useEffect` 抓取 `getDreams.php`，再篩選出 completed === 1 的夢想 ✅
+
+---
+
+### 架構圖與前後端流程
+
+
+           [前端 React]
+       ┌───────────────┐
+       │  AddDreamPage │ → POST → saveDream.php
+       │               │ ← 回應 ← { status, message }
+       └──────┬────────┘
+              │
+              ↓
+      SomedayListPage → GET → getDreams.php → 渲染泡泡
+              │
+              ↓
+     DreamDetailPage → GET → getDreamById.php
+            │完成│刪除│ → POST/DELETE → complete/deleteDream.php
+              ↓
+        GardenPage → 再次 GET getDreams.php → 成就分析
+
